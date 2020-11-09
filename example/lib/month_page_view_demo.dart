@@ -21,21 +21,23 @@ class _MonthPageViewDemoState extends State<MonthPageViewDemo> {
       appBar: AppBar(title: Text('翻页日历'), centerTitle: true),
       body: SingleChildScrollView(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             _buildSelectTime(),
             MonthPageView(
+              width: 400,
               padding: EdgeInsets.all(1),
               scrollDirection: Axis.horizontal,
               option: MonthOption(
                 enableContinuous: _selectType == 2,
-                marks: {
-                  DateDay.now().copyWith(day: 1): '111',
-                  DateDay.now().copyWith(day: 5): '222',
-                  DateDay.now().copyWith(day: 13): '333',
-                  DateDay.now().copyWith(day: 19): '444',
-                  DateDay.now().copyWith(day: 26): '444',
-                },
+                // marks: {
+                //   DateDay.now().copyWith(day: 1): '111',
+                //   DateDay.now().copyWith(day: 5): '222',
+                //   DateDay.now().copyWith(day: 13): '333',
+                //   DateDay.now().copyWith(day: 19): '444',
+                //   DateDay.now().copyWith(day: 26): '444',
+                // },
                 minDay: DateDay.now().copyWith(month: 1, day: 13),
                 maxDay: DateDay.now().copyWith(month: 12, day: 21),
                 enableMultiple: _selectType == 3,
@@ -60,7 +62,13 @@ class _MonthPageViewDemoState extends State<MonthPageViewDemo> {
                 setState(() {});
               },
               onCreated: (controller) => _controller = controller,
-              localeType: LocaleType.en,
+              localeType: CalendarLocaleType.zh,
+              onClear: (){
+                _controller.option.setFirstSelectDay(null);
+                _controller.option.setSecondSelectDay(null);
+                _controller.option.setMutileDays([]);
+                _controller.reLoad();
+              },
             ),
             Wrap(
               crossAxisAlignment: WrapCrossAlignment.center,
