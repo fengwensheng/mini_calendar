@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import '../model/calendar_i18n_model.dart';
 
 import 'month_widget.dart';
 import '../handle.dart';
@@ -8,6 +9,11 @@ import '../controller/month_page_controller.dart';
 import '../model/date_month.dart';
 import '../model/month_option.dart';
 
+///
+/// 翻页日历 <br/>
+///
+/// Create by JsonYe<597232387@qq.com> on 2019/12
+///
 class MonthPageView<T> extends StatefulWidget {
   /// 配置参数
   final MonthOption<T> option;
@@ -33,6 +39,9 @@ class MonthPageView<T> extends StatefulWidget {
   /// 点击事件
   final OnDaySelected<T> onDaySelected;
 
+  /// 多选监听
+  final ValueChanged<List<DateDay>> onMultipleSelectListen;
+
   /// 显示星期头部
   final bool showWeekHead;
 
@@ -57,11 +66,16 @@ class MonthPageView<T> extends StatefulWidget {
   /// 是否可以滑动翻页
   final bool pageSnapping;
 
+  /// 国际化语言类型
+  final CalendarLocaleType localeType;
+
   /// 创建后回调
   final ValueChanged<MonthPageController<T>> onCreated;
 
   /// 连选监听
   final OnContinuousSelectListen onContinuousSelectListen;
+
+  final VoidCallback onClear;
 
   const MonthPageView({
     Key key,
@@ -73,7 +87,7 @@ class MonthPageView<T> extends StatefulWidget {
     this.width,
     this.height,
     this.onDaySelected,
-    this.showWeekHead,
+    this.showWeekHead = true,
     this.buildWeekHead,
     this.scrollDirection = Axis.horizontal,
     this.pageSnapping = true,
@@ -83,6 +97,9 @@ class MonthPageView<T> extends StatefulWidget {
     this.buildMonthHead,
     this.weekHeadColor = Colors.white,
     this.monthHeadColor = Colors.white,
+    this.localeType = CalendarLocaleType.zh,
+    this.onMultipleSelectListen,
+    this.onClear,
   }) : super(key: key);
 
   @override
@@ -96,6 +113,11 @@ class _MonthPageViewState<T> extends State<MonthPageView<T>> {
   @override
   void initState() {
     _monthPageController = MonthPageController<T>()..init(widget.option, pageController: _controller);
+    if (widget.onMonthChange != null) {
+      _monthPageController
+          .positionStream()
+          .listen((position) => widget.onMonthChange(_monthPageController.monthList[position]));
+    }
     SchedulerBinding.instance.addPostFrameCallback((Duration timeStamp) {
       if (widget.onCreated != null) {
         widget.onCreated(_monthPageController);
@@ -120,12 +142,7 @@ class _MonthPageViewState<T> extends State<MonthPageView<T>> {
                   controller: _controller,
                   scrollDirection: widget.scrollDirection,
                   pageSnapping: widget.pageSnapping,
-                  onPageChanged: (position) {
-                    _monthPageController.changePosition(position);
-                    if (widget.onMonthChange != null) {
-                      widget.onMonthChange(_monthPageController.monthList[position]);
-                    }
-                  },
+                  onPageChanged: _monthPageController.changePosition,
                   children: _monthPageController.monthList.map((month) {
                     return MonthWidget(
                       width: _width,
@@ -135,6 +152,15 @@ class _MonthPageViewState<T> extends State<MonthPageView<T>> {
                       showWeekHead: false,
                       showMonthHead: false,
                       padding: widget.padding,
+                      onMultipleSelectListen: (days) {
+                        _monthPageController
+                          ..setMultipleDays(days)
+                          ..reLoad();
+                        if (widget.onMultipleSelectListen != null) {
+                          widget.onMultipleSelectListen(days);
+                        }
+                      },
+                      localeType: widget.localeType,
                       onDaySelected: (day, data) {
                         _monthPageController
                           ..setCurrentDay(day)
@@ -158,6 +184,7 @@ class _MonthPageViewState<T> extends State<MonthPageView<T>> {
         0,
         Container(
           width: _width,
+          height: 36,
           color: widget.weekHeadColor,
           padding: EdgeInsets.only(left: widget.padding.left, right: widget.padding.right, top: 5, bottom: 5),
           child: Row(
@@ -169,7 +196,7 @@ class _MonthPageViewState<T> extends State<MonthPageView<T>> {
                 alignment: Alignment.center,
                 child: widget.buildWeekHead != null
                     ? widget.buildWeekHead(context, week)
-                    : defaultBuildWeekHead(context, week),
+                    : defaultBuildWeekHead(context, week, localeType: widget.localeType),
               );
             }),
           ),
@@ -178,24 +205,27 @@ class _MonthPageViewState<T> extends State<MonthPageView<T>> {
     }
     if (widget.showMonthHead) {
       items.insert(
-          0,
-          Container(
-              width: _width,
-              color: widget.monthHeadColor,
-              padding: EdgeInsets.only(left: widget.padding.left, right: widget.padding.right, top: 5, bottom: 5),
-              child: StreamBuilder<int>(
-                  stream: _monthPageController.positionStream(),
-                  initialData: _monthPageController.position,
-                  builder: (ctx, data) {
-                    return widget.buildMonthHead != null
-                        ? widget.buildMonthHead(
-                            context, _width, double.infinity, _monthPageController.monthList[data.data])
-                        : defaultBuildMonthHead(context, _monthPageController.monthList[data.data], onLast: () {
-                            _monthPageController.last();
-                          }, onNext: () {
-                            _monthPageController.next();
-                          });
-                  })));
+        0,
+        Container(
+          width: _width,
+          color: widget.monthHeadColor,
+          padding: EdgeInsets.only(left: widget.padding.left, right: widget.padding.right, top: 5, bottom: 5),
+          child: StreamBuilder<int>(
+              stream: _monthPageController.positionStream(),
+              initialData: _monthPageController.position,
+              builder: (ctx, data) {
+                return widget.buildMonthHead != null
+                    ? widget.buildMonthHead(context, _width, double.infinity, _monthPageController.monthList[data.data])
+                    : defaultBuildMonthHead(
+                        context,
+                        _monthPageController.monthList[data.data],
+                        onLast: () => _monthPageController.last(),
+                        onNext: () => _monthPageController.next(),
+                        onClear: widget.onClear,
+                      );
+              }),
+        ),
+      );
     }
     return Column(children: items);
   }

@@ -6,6 +6,11 @@ import '../mini_calendar.dart';
 
 const int CACHE_SIZE = 12;
 
+///
+/// 翻页日历控制器 <br/>
+///
+/// Create by JsonYe<597232387@qq.com> on 2019/12
+///
 class MonthPageController<T> {
   List<MonthController<T>> _controllerList;
   MonthOption<T> _option;
@@ -25,7 +30,7 @@ class MonthPageController<T> {
   int get position => _position;
 
   /// 页面位置更改
-  void changePosition(int position){
+  void changePosition(int position) {
     _position = position;
     _positionController.sink.add(position);
   }
@@ -37,7 +42,7 @@ class MonthPageController<T> {
     _controllerList = [];
     _position = CACHE_SIZE ~/ 2;
     _pageController = pageController;
-    DateDay _day = option.currentDay??DateDay.now();
+    DateDay _day = option.currentDay ?? DateDay.now();
     List.generate(CACHE_SIZE, (index) {
       addMonth(DateMonth(_day.year, _day.month - CACHE_SIZE ~/ 2 + index));
     });
@@ -70,7 +75,6 @@ class MonthPageController<T> {
   /// 尾部增加月份，默认添加最后一月的下一月
   void addMonth([DateMonth month]) {
     month = month ?? _monthList.last.copyWith(month: _monthList.last.month + 1);
-    print(month);
     _monthList.add(month);
     if (_monthList.length > CACHE_SIZE) {
       _monthList.removeAt(0);
@@ -97,9 +101,15 @@ class MonthPageController<T> {
   void setCurrentDay(DateDay currentDay) => _option.setCurrentDay(currentDay);
   void setFirstWeek(int week) => _option.setFirstWeek(week);
   void setEnableContinuous(bool enable) => _option.setEnableContinuous(enable);
+
+  void setEnableMultiple(bool enable) => _option.setEnableMultiple(enable);
+
   void setContinuousDay(DateDay firstDay, DateDay sercondDay) => _option
     ..setFirstSelectDay(firstDay)
     ..setSecondSelectDay(sercondDay);
+
+  void setMultipleDays(List<DateDay> days) => _option.setMutileDays(days);
+
   void setMarks(Map<DateDay, T> marks) => _option.setMarks(marks);
 
   /// 更新组件
@@ -107,10 +117,12 @@ class MonthPageController<T> {
     List.generate(_controllerList.length, (index) {
       _controllerList[index]
         ..setCurrentDay(_option.currentDay)
-        ..setContinuousDay(_option.firstSelectDay, _option.secondSelectDay)
         ..setEnableContinuous(_option.enableContinuous)
+        ..setContinuousDay(_option.firstSelectDay, _option.secondSelectDay)
         ..setFirstWeek(_option.firstWeek)
         ..setMarks(_option.marks)
+        ..setEnableMultiple(_option.enableMultiple)
+        ..setMultipleDays(_option.multipleDays)
         ..reLoad();
     });
     _monthListController.sink.add(_monthList);
@@ -129,4 +141,17 @@ class MonthPageController<T> {
 
   /// 下一月
   void next() => _pageController?.animateToPage(++_position, duration: Duration(milliseconds: 200), curve: Curves.ease);
+
+  /// 跳转到指定月份
+  void goto(DateMonth month) {
+    if (month == _monthList[_position]) return;
+    _position = CACHE_SIZE ~/ 2;
+    _monthList.clear();
+    _controllerList.clear();
+    List.generate(CACHE_SIZE, (index) {
+      addMonth(DateMonth(month.year, month.month - CACHE_SIZE ~/ 2 + index));
+    });
+    _pageController?.animateToPage(_position, duration: Duration(milliseconds: 500), curve: Curves.ease);
+    changePosition(_position);
+  }
 }
